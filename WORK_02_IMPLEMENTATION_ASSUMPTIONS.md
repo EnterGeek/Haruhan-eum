@@ -239,3 +239,63 @@ TEMPORARY IMPLEMENTATION ASSUMPTION
   것으로 잘못 재사용되는 것을 방지해야 한다.
 - 영향을 받는 파일과 함수: `validateFlowInterpretationForMelody()`.
 - 향후 대체되어야 하는 제품 결정: candidate provenance가 복합 source를 허용할지 여부.
+
+## audio schedule 및 Web Audio 재생의 임시 구현 가정
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: MIDI 69를 440 Hz로 하는 12-TET 공식
+  `440 × 2^((midiNote - 69) / 12)`을 사용하며, 표준 MIDI `0..127`의 유한 정수만
+  수용한다.
+- 필요한 이유: melody의 MIDI pitch를 브라우저와 무관하게 동일한 물리 주파수로
+  변환하는 결정적 공통 경계가 필요하다.
+- 영향을 받는 파일과 함수: `src/work02/audio/frequency.ts`의
+  `midiNoteToFrequencyHz()`, `schedule.ts`, `validateSchedule.ts`.
+- 향후 대체되어야 하는 제품 결정: MIDI 범위 확대 여부와 비12-TET 또는 튜닝 시스템
+  선택.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: A/B/C 모두 `work02-audio-profile-v0`의 동일 profile, 즉 `sine`
+  waveform, master gain `0.18`, attack `0.015초`, release `0.08초`를 사용한다.
+- 필요한 이유: 이번 단계는 contour 결과만 비교할 수 있는 공통 재생 기반을 만들며,
+  방식별 음색·음량 차이를 제품 의미로 부여하지 않는다.
+- 영향을 받는 파일과 함수: `src/work02/audio/profile.ts`의
+  `DEFAULT_AUDIO_PLAYBACK_PROFILE`, `createAudioPlaybackProfileSnapshot()`,
+  `validateAudioSchedule()`.
+- 향후 대체되어야 하는 제품 결정: 최종 waveform, 음량, envelope와 사용자 설정의
+  도입 여부.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: `MelodyOutput`의 grammar snapshot에 있는 BPM과 total beats로
+  `secondsPerBeat = 60 / tempoBpm`을 계산하고, 각 event의 beat timeline을
+  `AudioSchedule`의 초 단위 timeline으로 변환한다. rest는 timeline에는 남지만
+  oscillator를 생성하지 않는다.
+- 필요한 이유: 별도의 9초 상수나 A/B/C별 timing 변형 없이 기존 melody 계약을
+  재생 가능한 순수 데이터로 보존해야 한다.
+- 영향을 받는 파일과 함수: `src/work02/audio/schedule.ts`의
+  `createAudioSchedule()`, `src/work02/audio/validateSchedule.ts`의
+  `validateAudioSchedule()`.
+- 향후 대체되어야 하는 제품 결정: tempo, total beats, rest 표현 및 polyphony
+  규칙의 변경.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: note envelope는 gain 0에서 시작해 attack 종료 시 master gain에
+  도달하고 release 시작까지 유지한 뒤 note end에서 0으로 떨어진다. attack과
+  release는 각각 note duration의 절반을 넘지 않게 제한하며 oscillator는 note end를
+  넘어서 재생하지 않는다.
+- 필요한 이유: 짧은 note에서도 attack과 release의 순서가 역전되거나 음이 다음
+  time cell로 누출되는 것을 방지해야 한다.
+- 영향을 받는 파일과 함수: `src/work02/audio/player.ts`의
+  `createWork02AudioPlayer().play()`, `validateAudioSchedule()`.
+- 향후 대체되어야 하는 제품 결정: envelope 곡선, accent/velocity와 note 간
+  overlap 정책.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: 새 `play()`는 기존 재생을 먼저 정리하며, player가 소유한
+  `AudioContext`는 첫 play에서만 생성한다. `dispose()` 뒤에는 player를 재사용할 수
+  없고 이후 `play()`는 명시적으로 실패한다.
+- 필요한 이유: UI가 아직 없는 단계에서도 중복 예약과 browser audio resource 누수를
+  막고 수명주기 결과를 테스트 가능하게 고정해야 한다.
+- 영향을 받는 파일과 함수: `src/work02/audio/player.ts`의
+  `createWork02AudioPlayer()`, `play()`, `stop()`, `dispose()`.
+- 향후 대체되어야 하는 제품 결정: context 공유 정책, 재생 완료 상태 갱신, UI별
+  재생·중지 제어와 background lifecycle 정책.

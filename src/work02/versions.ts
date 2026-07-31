@@ -18,3 +18,7 @@ export const MELODY_OUTPUT_CONTRACT_VERSION =
   'work02-melody-output-v2' as const
 export const MELODY_GENERATOR_VERSION =
   'work02-melody-generator-v0' as const
+export const AUDIO_SCHEDULE_CONTRACT_VERSION =
+  'work02-audio-schedule-v1' as const
+export const AUDIO_PLAYBACK_PROFILE_VERSION =
+  'work02-audio-profile-v0' as const
