@@ -1,12 +1,19 @@
 import type { Direction } from '../../domain/types'
 import type { HueRotationDirection } from '../hue'
 import type {
+  ABSOLUTE_HUE_INTERPRETER_VERSION,
   COMMON_FEATURES_VERSION,
   FLOW_INTERPRETATION_CONTRACT_VERSION,
+  HYBRID_HUE_INTERPRETER_VERSION,
+  RELATIVE_HUE_INTERPRETER_VERSION,
   WORK02_INPUT_VERSION,
 } from '../versions'
 
 export type InterpretationMethod = 'absolute-hue' | 'relative-hue' | 'hybrid'
+export type InterpreterVersion =
+  | typeof ABSOLUTE_HUE_INTERPRETER_VERSION
+  | typeof RELATIVE_HUE_INTERPRETER_VERSION
+  | typeof HYBRID_HUE_INTERPRETER_VERSION
 
 export interface AdjacentHueChange {
   fromPresentedOrder: number
@@ -65,7 +72,7 @@ export interface RegisterContourCandidate {
   source: string
 }
 
-export interface FlowInterpretation {
+export interface CommonFlowInterpretation {
   versions: {
     input: typeof WORK02_INPUT_VERSION
     contract: typeof FLOW_INTERPRETATION_CONTRACT_VERSION
@@ -80,4 +87,10 @@ export interface FlowInterpretation {
   hueMovement: HueMovementSummary
   phraseBoundaryCandidates: readonly PhraseBoundaryCandidate[]
   registerContourCandidates: readonly RegisterContourCandidate[]
+}
+
+export interface FlowInterpretation extends CommonFlowInterpretation {
+  versions: CommonFlowInterpretation['versions'] & {
+    interpreter: InterpreterVersion
+  }
 }

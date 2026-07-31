@@ -13,9 +13,9 @@ import {
   WORK02_INPUT_VERSION,
 } from '../versions'
 import type {
+  CommonFlowInterpretation,
   DirectionRun,
   DirectionTurn,
-  FlowInterpretation,
   InterpretationMethod,
 } from './types'
 
@@ -53,7 +53,7 @@ const buildTurns = (input: Work02Input): DirectionTurn[] =>
 export function extractCommonFlowFeatures(
   input: Work02Input,
   method: InterpretationMethod,
-): FlowInterpretation {
+): CommonFlowInterpretation {
   if (input.length !== WORK02_INPUT_CARD_COUNT) {
     throw new RangeError(`Work02Input must contain ${WORK02_INPUT_CARD_COUNT} items.`)
   }
