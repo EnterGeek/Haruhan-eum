@@ -93,3 +93,69 @@ TEMPORARY IMPLEMENTATION ASSUMPTION
 
 음계, 리듬, 음색, `variationSeed`에 관한 임시 결정은 후속 단계에서 별도로
 기록해야 한다.
+
+## 공통 음악 계약의 임시 구현 가정
+
+아래 값은 제품 결정이 아니라 후속 generator의 자의적 선택을 막기 위한 현재
+계약 기준이다.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: 음계는 major pentatonic이며 기준음 대비 반음 오프셋
+  `[0, 2, 4, 7, 9]`를 명시적으로 사용한다.
+- 필요한 이유: 모든 해석 방식이 같은 음 집합을 사용하는 validator 경계가 필요하다.
+- 영향을 받는 파일과 함수: `src/work02/music/grammar.ts`의
+  `DEFAULT_MUSIC_GRAMMAR`, `validateMusicGrammar()`, `validateMelodyOutput()`.
+- 향후 대체되어야 하는 제품 결정: 제품의 공통 음계와 음계 명칭.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: tonic은 MIDI 60이며 허용 음역은 MIDI `60..76`이다.
+- 필요한 이유: 음계 포함 여부와 출력 음역을 공통으로 검증할 수 있어야 한다.
+- 영향을 받는 파일과 함수: `DEFAULT_MUSIC_GRAMMAR`,
+  `validateMusicGrammar()`, `validateMelodyOutput()`.
+- 향후 대체되어야 하는 제품 결정: 기준음과 최종 사용 음역.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: tempo는 80 BPM이고 전체 길이는 12 beats이다.
+- 필요한 이유: 방식별로 달라질 수 없는 시간축과 정확한 종료 경계를 고정해야 한다.
+- 영향을 받는 파일과 함수: `DEFAULT_MUSIC_GRAMMAR`, `secondsPerBeat()`,
+  `beatsToSeconds()`, 두 validator.
+- 향후 대체되어야 하는 제품 결정: 최종 템포와 전체 박자 수.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: 허용 duration은 beat 단위 `[0.5, 1, 1.5, 2]`이다.
+- 필요한 이유: 향후 generator 출력의 리듬 단위를 공통 validator가 판정해야 한다.
+- 영향을 받는 파일과 함수: `DEFAULT_MUSIC_GRAMMAR`,
+  `validateMusicGrammar()`, `validateMelodyOutput()`.
+- 향후 대체되어야 하는 제품 결정: 공통 리듬 어휘와 세분도.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: 인접 note 사이 최대 도약은 7 semitones이며 중간 rest가 있어도
+  앞뒤 note 사이에 동일하게 적용한다.
+- 필요한 이유: generator 방식과 무관한 출력 안전 경계를 먼저 고정해야 한다.
+- 영향을 받는 파일과 함수: `DEFAULT_MUSIC_GRAMMAR`,
+  `validateMusicGrammar()`, `validateMelodyOutput()`.
+- 향후 대체되어야 하는 제품 결정: 허용 최대 도약과 rest 전후 적용 여부.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: 목표 재생 시간은 `8..15초`이며 BPM과 beats에서 계산한다.
+- 필요한 이유: 임의 저장 문자열 없이 실제 음악 시간축이 제품 범위에 드는지
+  판정해야 한다.
+- 영향을 받는 파일과 함수: `DEFAULT_MUSIC_GRAMMAR`, `beatsToSeconds()`,
+  `validateMusicGrammar()`, `validateMelodyOutput()`.
+- 향후 대체되어야 하는 제품 결정: 허용 재생 시간 범위.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: 무음은 timeline gap이 아니라 명시적인 `rest` 이벤트로 표현한다.
+- 필요한 이유: 출력의 전체 12 beats를 손실 없이 검사하고 숨겨진 공백을
+  구분해야 한다.
+- 영향을 받는 파일과 함수: `src/work02/music/types.ts`의
+  `MelodyRestEvent`, `validateMelodyOutput()`.
+- 향후 대체되어야 하는 제품 결정: rest 허용 여부와 무음 표현 계약.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: Work 01의 `presentedOrder 1..12`는 출력 전체 provenance에서
+  각각 적어도 한 번 추적 가능해야 한다.
+- 필요한 이유: 모든 선택 입력이 결과와 인과적으로 연결됐는지 최소 수준에서
+  검증할 수 있어야 한다.
+- 영향을 받는 파일과 함수: `MelodyEventSource`, `validateMelodyOutput()`.
+- 향후 대체되어야 하는 제품 결정: 각 입력의 영향 강도 및 중복 provenance 허용 규칙.
