@@ -183,6 +183,7 @@ describe('melody output contract', () => {
     ['wrong output version', (o: any) => { o.versions.outputContract = 'wrong' }],
     ['wrong grammar version', (o: any) => { o.versions.grammar = 'wrong' }],
     ['wrong interpretation version', (o: any) => { o.versions.interpretationContract = 'wrong' }],
+    ['method-specific grammar', (o: any) => { o.grammar.maximumMelodicLeapSemitones = 8 }],
     ['source length mismatch', (o: any) => { o.events[0].source.contourPositions.pop() }],
     ['invalid presented order', (o: any) => { o.events[0].source.presentedOrders[0] = 0 }],
     ['contour outside range', (o: any) => { o.events[0].source.contourPositions[0] = 1.1 }],
@@ -198,7 +199,7 @@ describe('melody output contract', () => {
 
   it('rejects rests when the snapshot forbids them', () => {
     const output = mutate((o) => { o.grammar.restsAllowed = false })
-    expect(() => validateMelodyOutput(output)).toThrow(/rest/)
+    expect(() => validateMelodyOutput(output)).toThrow(/shared A\/B\/C grammar/)
   })
 })
 

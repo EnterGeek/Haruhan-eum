@@ -7,6 +7,7 @@ import {
   RELATIVE_HUE_INTERPRETER_VERSION,
   WORK02_INPUT_CARD_COUNT,
 } from '../versions'
+import { DEFAULT_MUSIC_GRAMMAR } from './grammar'
 import { beatsToSeconds } from './time'
 import type {
   MelodyEventSource,
@@ -97,6 +98,33 @@ const isScaleNote = (midi: number, grammar: MusicGrammarSnapshot): boolean =>
     ((midi - grammar.tonicMidi) % 12 + 12) % 12,
   )
 
+const matchesSharedGrammar = (grammar: MusicGrammarSnapshot): boolean =>
+  grammar.version === DEFAULT_MUSIC_GRAMMAR.version &&
+  grammar.scale.name === DEFAULT_MUSIC_GRAMMAR.scale.name &&
+  grammar.scale.semitoneOffsets.length ===
+    DEFAULT_MUSIC_GRAMMAR.scale.semitoneOffsets.length &&
+  grammar.scale.semitoneOffsets.every(
+    (offset, index) => offset === DEFAULT_MUSIC_GRAMMAR.scale.semitoneOffsets[index],
+  ) &&
+  grammar.tonicMidi === DEFAULT_MUSIC_GRAMMAR.tonicMidi &&
+  grammar.minimumMidi === DEFAULT_MUSIC_GRAMMAR.minimumMidi &&
+  grammar.maximumMidi === DEFAULT_MUSIC_GRAMMAR.maximumMidi &&
+  grammar.tempoBpm === DEFAULT_MUSIC_GRAMMAR.tempoBpm &&
+  grammar.totalBeats === DEFAULT_MUSIC_GRAMMAR.totalBeats &&
+  grammar.allowedDurationsBeats.length ===
+    DEFAULT_MUSIC_GRAMMAR.allowedDurationsBeats.length &&
+  grammar.allowedDurationsBeats.every(
+    (duration, index) =>
+      duration === DEFAULT_MUSIC_GRAMMAR.allowedDurationsBeats[index],
+  ) &&
+  grammar.maximumMelodicLeapSemitones ===
+    DEFAULT_MUSIC_GRAMMAR.maximumMelodicLeapSemitones &&
+  grammar.targetDurationSeconds.minimum ===
+    DEFAULT_MUSIC_GRAMMAR.targetDurationSeconds.minimum &&
+  grammar.targetDurationSeconds.maximum ===
+    DEFAULT_MUSIC_GRAMMAR.targetDurationSeconds.maximum &&
+  grammar.restsAllowed === DEFAULT_MUSIC_GRAMMAR.restsAllowed
+
 export function validateMelodyOutput(input: unknown): MelodyOutput {
   const output = object(input, 'output')
   const versions = object(output.versions, 'versions')
@@ -115,6 +143,9 @@ export function validateMelodyOutput(input: unknown): MelodyOutput {
 
   const grammar = validateMusicGrammar(output.grammar)
   if (versions.grammar !== grammar.version) fail('grammar versions do not match.')
+  if (!matchesSharedGrammar(grammar)) {
+    fail('grammar snapshot must match the single shared A/B/C grammar.')
+  }
   const totalBeats = finite(output.totalBeats, 'totalBeats')
   if (totalBeats !== grammar.totalBeats) {
     fail('totalBeats must match the grammar snapshot.')
