@@ -15,4 +15,6 @@ export const HYBRID_HUE_INTERPRETER_VERSION =
   'work02-hybrid-hue-v1' as const
 export const MUSIC_GRAMMAR_VERSION = 'work02-music-grammar-v0' as const
 export const MELODY_OUTPUT_CONTRACT_VERSION =
-  'work02-melody-output-v1' as const
+  'work02-melody-output-v2' as const
+export const MELODY_GENERATOR_VERSION =
+  'work02-melody-generator-v0' as const

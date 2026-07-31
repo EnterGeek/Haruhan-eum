@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ABSOLUTE_HUE_INTERPRETER_VERSION,
+  MELODY_GENERATOR_VERSION,
   FLOW_INTERPRETATION_CONTRACT_VERSION,
   MELODY_OUTPUT_CONTRACT_VERSION,
   MUSIC_GRAMMAR_VERSION,
@@ -56,6 +57,7 @@ const validOutput = (): MelodyOutput => ({
     grammar: MUSIC_GRAMMAR_VERSION,
     interpretationContract: FLOW_INTERPRETATION_CONTRACT_VERSION,
     interpreter: ABSOLUTE_HUE_INTERPRETER_VERSION,
+    generator: MELODY_GENERATOR_VERSION,
   },
   method: 'absolute-hue',
   grammar: createMusicGrammarSnapshot(),
@@ -89,8 +91,8 @@ describe('music grammar contract', () => {
     )).toBeGreaterThanOrEqual(DEFAULT_MUSIC_GRAMMAR.targetDurationSeconds.minimum)
     expect(beatsToSeconds(
       DEFAULT_MUSIC_GRAMMAR.totalBeats,
-      DEFAULT_MUSIC_GRAMMAR.tempoBpm,
-    )).toBeLessThanOrEqual(DEFAULT_MUSIC_GRAMMAR.targetDurationSeconds.maximum)
+      DEFAUL_MUSIC_GRAMMAR.tempoBpm,
+     )).toBeLessThanOrEqual(DEFAULT_MUSIC_GRAMMAR.targetDurationSeconds.maximum)
   })
 
   it.each([
@@ -181,6 +183,7 @@ describe('melody output contract', () => {
     ['no note', (o: any) => { o.events = [rest(0, 0, 2, [1, 2]), rest(1, 2, 2, [3, 4]), rest(2, 4, 2, [5, 6]), rest(3, 6, 2, [7, 8]), rest(4, 8, 2, [9, 10]), rest(5, 10, 2, [11, 12])] }],
     ['method/interpreter mismatch', (o: any) => { o.method = 'relative-hue' }],
     ['wrong output version', (o: any) => { o.versions.outputContract = 'wrong' }],
+    ['wrong generator version', (o: any) => { o.versions.generator = 'wrong' }],
     ['wrong grammar version', (o: any) => { o.versions.grammar = 'wrong' }],
     ['wrong interpretation version', (o: any) => { o.versions.interpretationContract = 'wrong' }],
     ['method-specific grammar', (o: any) => { o.grammar.maximumMelodicLeapSemitones = 8 }],

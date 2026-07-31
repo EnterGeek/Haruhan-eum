@@ -1,6 +1,7 @@
 import type { Direction } from '../../domain/types'
 import type { InterpretationMethod, InterpreterVersion } from '../interpretation/types'
 import type {
+  MELODY_GENERATOR_VERSION,
   FLOW_INTERPRETATION_CONTRACT_VERSION,
   MELODY_OUTPUT_CONTRACT_VERSION,
   MUSIC_GRAMMAR_VERSION,
@@ -61,7 +62,8 @@ export interface MelodyOutput {
     outputContract: typeof MELODY_OUTPUT_CONTRACT_VERSION
     grammar: typeof MUSIC_GRAMMAR_VERSION
     interpretationContract: typeof FLOW_INTERPRETATION_CONTRACT_VERSION
-    interpreter: InterpreterVersion
+      interpreter: InterpreterVersion
+    generator: typeof MELODY_GENERATOR_VERSION
   }
   method: InterpretationMethod
   grammar: MusicGrammarSnapshot

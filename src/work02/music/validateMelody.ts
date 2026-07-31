@@ -1,5 +1,6 @@
 import {
   ABSOLUTE_HUE_INTERPRETER_VERSION,
+  MELODY_GENERATOR_VERSION,
   FLOW_INTERPRETATION_CONTRACT_VERSION,
   HYBRID_HUE_INTERPRETER_VERSION,
   MELODY_OUTPUT_CONTRACT_VERSION,
@@ -139,6 +140,9 @@ export function validateMelodyOutput(input: unknown): MelodyOutput {
   }
   if (versions.interpreter !== expectedInterpreter(output.method)) {
     fail('method and interpreter version do not match.')
+  }
+  if (versions.generator !== MELODY_GENERATOR_VERSION) {
+    fail('generator version is unsupported.')
   }
 
   const grammar = validateMusicGrammar(output.grammar)

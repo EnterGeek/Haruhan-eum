@@ -159,3 +159,83 @@ TEMPORARY IMPLEMENTATION ASSUMPTION
   검증할 수 있어야 한다.
 - 영향을 받는 파일과 함수: `MelodyEventSource`, `validateMelodyOutput()`.
 - 향후 대체되어야 하는 제품 결정: 각 입력의 영향 강도 및 중복 provenance 허용 규칙.
+
+## baseline melody generator의 임시 구현 가정
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: 허용 음역의 실제 scale note 목록을 낮은 MIDI부터 구성하고,
+  contour `p`를 `floor(p × (N - 1) + 0.5)` 인덱스로 양자화한다. 정확한
+  절반 tie는 높은 인덱스를 선택한다.
+- 필요한 이유: 연속 contour를 결정적인 단일 목표 음으로 변환하는 최소 규칙이
+  필요하다.
+- 영향을 받는 파일과 함수: `src/work02/music/generator.ts`의
+  `buildScaleNotes()`, `quantizeContourIndex()`, `generateMelody()`.
+- 향후 대체되어야 하는 제품 결정: contour 양자화 방식과 경계 tie-break.
+
+`quantizeContourIndex(normalizedPosition, scaleNoteCount)`는 MIDI note가 아니라
+`0..scaleNoteCount - 1` 범위의 scale index를 반환한다. MIDI 선택은
+`generateMelody()`가 해당 index로 `buildScaleNotes()` 결과를 조회하는 별도 단계다.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: 목표 음이 이전 note에서 최대 7 semitones를 넘으면 허용 범위의
+  scale note를 다음 순서로 선택한다: 목표 MIDI와의 거리, 이전 note와의 거리,
+  MIDI 오름차순. 즉 목표 거리 동률이면 이전 note에 가까운 후보가 먼저이며,
+  두 거리까지 같을 때만 낮은 MIDI를 선택한다.
+- 필요한 이유: contour 목표를 최대한 보존하면서 공통 leap 계약을 항상 만족해야
+  한다.
+- 영향을 받는 파일과 함수: `selectLeapLimitedNote()`, `generateMelody()`.
+- 향후 대체되어야 하는 제품 결정: 도약 제한 시 음 선택 우선순위와 tie-break.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: 12개 입력 각각은 시작 beat `presentedOrder - 1`인 1-beat time
+  cell 하나에 대응한다. `right`는 1-beat note, `left`는 0.5-beat note 뒤
+  0.5-beat explicit rest를 생성한다.
+- 필요한 이유: 방향을 감정이나 음고로 해석하지 않으면서도 손실 없이 보존되는
+  최소 articulation이 필요하다.
+- 영향을 받는 파일과 함수: `generateMelody()`, `validateMelodyOutput()`.
+- 향후 대체되어야 하는 제품 결정: 방향별 articulation과 time-cell 리듬.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: baseline generator는 난수와 `variationSeed` 없이 하나의
+  `FlowInterpretation`에서 항상 같은 `MelodyOutput`을 생성하며, generator
+  버전은 `work02-melody-generator-v0`이다.
+- 필요한 이유: A/B/C contour 차이만 비교 가능한 재현 가능한 기준 출력이
+  필요하다.
+- 영향을 받는 파일과 함수: `src/work02/versions.ts`,
+  `generateMelody()`, `validateMelodyOutput()`.
+- 향후 대체되어야 하는 제품 결정: 향후 변형 생성의 버전·seed 계약.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: 합성 Hue edge-case의 21개 MIDI literal 배열은 최종 음악 제품의 정답이 아니라
+  `work02-melody-generator-v0`의 결정적 회귀 기준이다. 실제 Work 01 fixture는
+  별도 pipeline 회귀로 검증한다. 음계, 양자화,
+  도약 선택, articulation 같은 임시 음악 규칙이 달라지면 먼저 generator
+  버전을 변경하고 새 회귀 기준을 의도적으로 승인한다. 같은 버전에서 기대 배열만
+  덮어쓰지 않는다.
+- 필요한 이유: 골든 배열 검증은 A/B/C 공통 문법, 12 beats·9초, provenance,
+  articulation, 최대 도약의 독립적인 수학적 계약 검증을 대체하지 않아야 한다.
+- 영향을 받는 파일과 함수: `src/work02/music/generator.test.ts`,
+  `generateMelody()`, `validateMelodyOutput()`.
+- 향후 대체되어야 하는 제품 결정: 제품 음악 규칙 승인 절차와 generator 버전 정책.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: 실제 Work 01 golden fixture 회귀는 fixture의 7개 case ID
+  (`same-deck-baseline`, `all-left-fast-buttons`, `all-right-same-deck-replay`,
+  `undo-and-reselect`, `swipe-only`, `mixed-button-and-swipe`,
+  `pause-and-resume`)를 `cases`에서 읽어
+  `expandGoldenCase() → interpretFlow() → generateMelody() → validateMelodyOutput()`으로
+  A/B/C 각각에 통과시킨다. 이는 `work02-melody-generator-v0`의 회귀 기준이며,
+  합성 Hue 입력은 수학적 edge-case 검증으로만 별도 유지한다.
+- 필요한 이유: 합성 입력을 실제 Work 01 사용자 세션 회귀라고 잘못 표기하지 않고,
+  provenance와 방향을 포함한 실제 fixture 경계를 독립적으로 보존해야 한다.
+- 영향을 받는 파일과 함수: `docs/golden-sessions/representative-sessions.json`,
+  `src/work02/golden/expandGoldenCase.ts`, `src/work02/music/generator.test.ts`.
+- 향후 대체되어야 하는 제품 결정: 대표 golden fixture의 승인된 case 구성과 수.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: melody generator 입력 validator는 각 contour candidate의 `source`가
+  정확히 `${method}@${interpreter}`와 같을 때만 수용한다.
+- 필요한 이유: 다른 해석 방식 또는 다른 interpreter version의 contour가 현재 method의
+  것으로 잘못 재사용되는 것을 방지해야 한다.
+- 영향을 받는 파일과 함수: `validateFlowInterpretationForMelody()`.
+- 향후 대체되어야 하는 제품 결정: candidate provenance가 복합 source를 허용할지 여부.
