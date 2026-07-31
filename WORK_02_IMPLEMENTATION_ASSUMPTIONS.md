@@ -278,8 +278,9 @@ TEMPORARY IMPLEMENTATION ASSUMPTION
   규칙의 변경.
 
 TEMPORARY IMPLEMENTATION ASSUMPTION
-- 결정 내용: note envelope는 gain 0에서 시작해 attack 종료 시 master gain에
-  도달하고 release 시작까지 유지한 뒤 note end에서 0으로 떨어진다. attack과
+- 결정 내용: note-local gain envelope는 gain 0에서 시작해 attack 종료 시
+  normalized 1에 도달하고 release 시작까지 유지한 뒤 note end에서 0으로
+  떨어진다. 최종 master gain `0.18`은 master gain node에서 한 번만 적용한다. attack과
   release는 각각 note duration의 절반을 넘지 않게 제한하며 oscillator는 note end를
   넘어서 재생하지 않는다.
 - 필요한 이유: 짧은 note에서도 attack과 release의 순서가 역전되거나 음이 다음
@@ -299,3 +300,37 @@ TEMPORARY IMPLEMENTATION ASSUMPTION
   `createWork02AudioPlayer()`, `play()`, `stop()`, `dispose()`.
 - 향후 대체되어야 하는 제품 결정: context 공유 정책, 재생 완료 상태 갱신, UI별
   재생·중지 제어와 background lifecycle 정책.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: profile의 `masterGain 0.18`은 master gain node에 한 번만 적용하고,
+  각 note gain envelope는 normalized `0 → 1 → 1 → 0`으로 예약한다. note
+  envelope에 `0.18`을 다시 적용하는 이중 gain staging은 허용하지 않는다.
+- 필요한 이유: 공통 출력 gain의 의미를 보존하면서 note envelope와 최종 출력
+  레벨의 책임을 분리해야 한다.
+- 영향을 받는 파일과 함수: `src/work02/audio/player.ts`의
+  `createWork02AudioPlayer().play()`, `src/work02/audio/player.test.ts`.
+- 향후 대체되어야 하는 제품 결정: 최종 출력 음량 및 사용자 volume 정책.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: 현재 playback generation의 마지막 oscillator가 자연 종료되면 해당
+  node pair와 master gain을 연결 해제하고 `isPlaying()`을 false로 전환한다. 이전
+  playback의 stale `onended` callback은 새 playback 상태를 변경하지 않는다.
+- 필요한 이유: 예약 완료와 player 상태를 일치시키고 재생 교체·중지·dispose 뒤의
+  늦은 Web Audio callback이 현재 session을 종료하는 경쟁 상태를 막아야 한다.
+- 영향을 받는 파일과 함수: `src/work02/audio/player.ts`의
+  `OscillatorNodeAdapter`, `play()`, `stop()`, `dispose()`.
+- 향후 대체되어야 하는 제품 결정: 제품 전역 audio session 소유권과 자연 종료
+  event subscription 계약.
+
+TEMPORARY IMPLEMENTATION ASSUMPTION
+- 결정 내용: A/B/C Melody Lab은 `work02-lab.html`로만 접근하는 개발용 분석
+  도구이며 제품 UI와 상태를 공유하지 않는다. 세 method는 동일 playback profile을
+  사용하고, Lab 결과는 제품 기본 방식의 결정이나 추천을 뜻하지 않는다. fixture
+  선택과 재생 상태는 저장하지 않는다.
+- 필요한 이유: 실제 7개 Work 01 fixture의 contour·MIDI·timing 차이를 제품 경험과
+  분리된 동일 조건에서 반복 비교해야 한다.
+- 영향을 받는 파일과 함수: `work02-lab.html`, `vite.config.ts`,
+  `src/work02/lab/model.ts`의 `createLabFixtureResult()`,
+  `src/work02/lab/Work02Lab.tsx`.
+- 향후 대체되어야 하는 제품 결정: A/B/C 평가 결과, 제품 기본 method, 제품 내
+  재생 노출 여부와 저장 정책.

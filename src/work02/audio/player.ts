@@ -18,6 +18,7 @@ export interface GainNodeAdapter extends AudioNodeAdapter {
 export interface OscillatorNodeAdapter extends AudioNodeAdapter {
   frequency: AudioParamAdapter
   type: string
+  onended: (() => void) | null
   start(when: number): void
   stop(when?: number): void
 }
@@ -62,6 +63,7 @@ export class Work02AudioPlayerDisposedError extends Error {
 interface ActiveAudioNodePair {
   oscillator: OscillatorNodeAdapter
   gain: GainNodeAdapter
+  cleaned: boolean
 }
 
 const stopSilently = (oscillator: OscillatorNodeAdapter): void => {
@@ -101,13 +103,19 @@ export function createWork02AudioPlayer(
   let activeNodes: ActiveAudioNodePair[] = []
   let playing = false
   let disposed = false
+  let playbackGeneration = 0
+
+  const cleanupPair = (pair: ActiveAudioNodePair, stop: boolean): void => {
+    if (pair.cleaned) return
+    pair.cleaned = true
+    if (stop) stopSilently(pair.oscillator)
+    disconnectSilently(pair.oscillator)
+    disconnectSilently(pair.gain)
+  }
 
   const stop = (): void => {
-    activeNodes.forEach(({ oscillator, gain }) => {
-      stopSilently(oscillator)
-      disconnectSilently(oscillator)
-      disconnectSilently(gain)
-    })
+    playbackGeneration += 1
+    activeNodes.forEach((pair) => cleanupPair(pair, true))
     activeNodes = []
     if (masterGain !== null) disconnectSilently(masterGain)
     masterGain = null
@@ -119,18 +127,19 @@ export function createWork02AudioPlayer(
       if (disposed) throw new Work02AudioPlayerDisposedError()
       const validated = validateAudioSchedule(schedule)
       stop()
+      const generation = ++playbackGeneration
 
       const context = audioContext ?? audioContextFactory()
       audioContext = context
       if (context.state === 'suspended') await context.resume()
-      const playbackStartTime = context.currentTime
-
-      const nextMasterGain = context.createGain()
-      nextMasterGain.gain.setValueAtTime(validated.profile.masterGain, playbackStartTime)
-      nextMasterGain.connect(context.destination)
-      masterGain = nextMasterGain
-
+      if (disposed || generation !== playbackGeneration) return
       try {
+        const playbackStartTime = context.currentTime
+        const nextMasterGain = context.createGain()
+        masterGain = nextMasterGain
+        nextMasterGain.gain.setValueAtTime(validated.profile.masterGain, playbackStartTime)
+        nextMasterGain.connect(context.destination)
+
         validated.notes.forEach((note) => {
           const startTime = playbackStartTime + note.startSeconds
           const endTime = playbackStartTime + note.endSeconds
@@ -147,18 +156,36 @@ export function createWork02AudioPlayer(
           const releaseStart = Math.max(attackEnd, endTime - effectiveRelease)
 
           const oscillator = context.createOscillator()
-          const gain = context.createGain()
+          let gain: GainNodeAdapter
+          try {
+            gain = context.createGain()
+          } catch (error) {
+            stopSilently(oscillator)
+            disconnectSilently(oscillator)
+            throw error
+          }
+          const pair: ActiveAudioNodePair = { oscillator, gain, cleaned: false }
+          oscillator.onended = () => {
+            cleanupPair(pair, false)
+            if (generation !== playbackGeneration) return
+            activeNodes = activeNodes.filter((candidate) => candidate !== pair)
+            if (activeNodes.length === 0) {
+              if (masterGain !== null) disconnectSilently(masterGain)
+              masterGain = null
+              playing = false
+            }
+          }
+          activeNodes.push(pair)
           oscillator.type = validated.profile.waveform
           oscillator.frequency.setValueAtTime(note.frequencyHz, startTime)
           gain.gain.setValueAtTime(0, startTime)
-          gain.gain.linearRampToValueAtTime(validated.profile.masterGain, attackEnd)
-          gain.gain.setValueAtTime(validated.profile.masterGain, releaseStart)
+          gain.gain.linearRampToValueAtTime(1, attackEnd)
+          gain.gain.setValueAtTime(1, releaseStart)
           gain.gain.linearRampToValueAtTime(0, endTime)
           oscillator.connect(gain)
           gain.connect(nextMasterGain)
           oscillator.start(startTime)
           oscillator.stop(endTime)
-          activeNodes.push({ oscillator, gain })
         })
         playing = true
       } catch (error) {

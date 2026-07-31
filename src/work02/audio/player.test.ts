@@ -22,14 +22,25 @@ type Automation = {
   time: number
 }
 
+type SchedulingFailure =
+  | 'frequency'
+  | 'noteGain'
+  | 'oscillatorConnect'
+  | 'gainConnect'
+  | 'start'
+  | 'stop'
+
 class FakeAudioParam implements AudioParamAdapter {
   readonly automations: Automation[] = []
+  throwOnAutomation = false
 
   setValueAtTime(value: number, startTime: number): void {
+    if (this.throwOnAutomation) throw new Error('synthetic scheduling failure')
     this.automations.push({ operation: 'set', value, time: startTime })
   }
 
   linearRampToValueAtTime(value: number, endTime: number): void {
+    if (this.throwOnAutomation) throw new Error('synthetic scheduling failure')
     this.automations.push({ operation: 'linearRamp', value, time: endTime })
   }
 }
@@ -37,8 +48,10 @@ class FakeAudioParam implements AudioParamAdapter {
 class FakeAudioNode implements AudioNodeAdapter {
   readonly destinations: AudioNodeAdapter[] = []
   disconnectCalls = 0
+  throwOnConnect = false
 
   connect(destination: AudioNodeAdapter): void {
+    if (this.throwOnConnect) throw new Error('synthetic scheduling failure')
     this.destinations.push(destination)
   }
 
@@ -56,13 +69,24 @@ class FakeOscillatorNode extends FakeAudioNode implements OscillatorNodeAdapter 
   type = ''
   readonly startTimes: number[] = []
   readonly stopTimes: Array<number | undefined> = []
+  onended: (() => void) | null = null
+  throwOnStart = false
+  throwOnScheduledStop = false
 
   start(when: number): void {
+    if (this.throwOnStart) throw new Error('synthetic scheduling failure')
     this.startTimes.push(when)
   }
 
   stop(when?: number): void {
     this.stopTimes.push(when)
+    if (when !== undefined && this.throwOnScheduledStop) {
+      throw new Error('synthetic scheduling failure')
+    }
+  }
+
+  emitEnded(): void {
+    this.onended?.()
   }
 }
 
@@ -74,15 +98,24 @@ class FakeAudioContext implements AudioContextAdapter {
   readonly oscillators: FakeOscillatorNode[] = []
   resumeCalls = 0
   closeCalls = 0
+  schedulingFailure: SchedulingFailure | null = null
 
   createGain(): FakeGainNode {
     const gain = new FakeGainNode()
+    if (this.gains.length > 0) {
+      gain.gain.throwOnAutomation = this.schedulingFailure === 'noteGain'
+      gain.throwOnConnect = this.schedulingFailure === 'gainConnect'
+    }
     this.gains.push(gain)
     return gain
   }
 
   createOscillator(): FakeOscillatorNode {
     const oscillator = new FakeOscillatorNode()
+    oscillator.frequency.throwOnAutomation = this.schedulingFailure === 'frequency'
+    oscillator.throwOnConnect = this.schedulingFailure === 'oscillatorConnect'
+    oscillator.throwOnStart = this.schedulingFailure === 'start'
+    oscillator.throwOnScheduledStop = this.schedulingFailure === 'stop'
     this.oscillators.push(oscillator)
     return oscillator
   }
@@ -143,8 +176,8 @@ describe('Work02AudioPlayer', () => {
 
     expect(context.gains[1].gain.automations).toEqual([
       { operation: 'set', value: 0, time: 4 },
-      { operation: 'linearRamp', value: 0.18, time: 4.015 },
-      { operation: 'set', value: 0.18, time: 4.67 },
+      { operation: 'linearRamp', value: 1, time: 4.015 },
+      { operation: 'set', value: 1, time: 4.67 },
       { operation: 'linearRamp', value: 0, time: 4.75 },
     ])
   })
@@ -159,8 +192,8 @@ describe('Work02AudioPlayer', () => {
     await player.play(schedule)
     expect(context.gains[1].gain.automations).toEqual([
       { operation: 'set', value: 0, time: 4 },
-      { operation: 'linearRamp', value: 0.18, time: 4.01 },
-      { operation: 'set', value: 0.18, time: 4.01 },
+      { operation: 'linearRamp', value: 1, time: 4.01 },
+      { operation: 'set', value: 1, time: 4.01 },
       { operation: 'linearRamp', value: 0, time: 4.02 },
     ])
     expect(context.oscillators[0].stopTimes).toEqual([4.02])
@@ -174,6 +207,107 @@ describe('Work02AudioPlayer', () => {
 
     expect(schedule.notes).toHaveLength(12)
     expect(context.oscillators).toHaveLength(12)
+  })
+
+  it('keeps playing until the final oscillator ends, then disconnects the master', async () => {
+    const context = new FakeAudioContext()
+    const player = createWork02AudioPlayer({ audioContextFactory: () => context })
+    await player.play(scheduleFor())
+    const master = context.gains[0]
+
+    context.oscillators.slice(0, -1).forEach((oscillator) => oscillator.emitEnded())
+    expect(player.isPlaying()).toBe(true)
+    expect(master.disconnectCalls).toBe(0)
+    expect(context.gains.slice(1, -1).every((gain) => gain.disconnectCalls === 1)).toBe(true)
+
+    context.oscillators.at(-1)?.emitEnded()
+    expect(player.isPlaying()).toBe(false)
+    expect(master.disconnectCalls).toBe(1)
+  })
+
+  it('ignores a prior playback onended callback after replacement', async () => {
+    const context = new FakeAudioContext()
+    const player = createWork02AudioPlayer({ audioContextFactory: () => context })
+    await player.play(scheduleFor())
+    const staleCallbacks = context.oscillators.map((oscillator) => oscillator.onended)
+    await player.play(scheduleFor('all-right-same-deck-replay'))
+
+    staleCallbacks.forEach((callback) => callback?.())
+    expect(player.isPlaying()).toBe(true)
+  })
+
+  it('makes late onended callbacks harmless after stop and dispose', async () => {
+    const context = new FakeAudioContext()
+    const player = createWork02AudioPlayer({ audioContextFactory: () => context })
+    await player.play(scheduleFor())
+    const afterStop = context.oscillators[0].onended
+    player.stop()
+    afterStop?.()
+    expect(player.isPlaying()).toBe(false)
+
+    await player.play(scheduleFor())
+    const afterDispose = context.oscillators.at(-1)?.onended
+    await player.dispose()
+    afterDispose?.()
+    expect(player.isPlaying()).toBe(false)
+  })
+
+  it('can play again after every oscillator ended naturally', async () => {
+    const context = new FakeAudioContext()
+    const player = createWork02AudioPlayer({ audioContextFactory: () => context })
+    await player.play(scheduleFor())
+    context.oscillators.forEach((oscillator) => oscillator.emitEnded())
+    expect(player.isPlaying()).toBe(false)
+
+    await player.play(scheduleFor('all-right-same-deck-replay'))
+    expect(player.isPlaying()).toBe(true)
+  })
+
+  it('cleans partial nodes after a scheduling error and remains reusable', async () => {
+    const context = new FakeAudioContext()
+    const originalCreateOscillator = context.createOscillator.bind(context)
+    let calls = 0
+    context.createOscillator = () => {
+      calls += 1
+      if (calls === 2) throw new Error('synthetic scheduling failure')
+      return originalCreateOscillator()
+    }
+    const player = createWork02AudioPlayer({ audioContextFactory: () => context })
+
+    await expect(player.play(scheduleFor())).rejects.toThrow('synthetic scheduling failure')
+    expect(player.isPlaying()).toBe(false)
+    expect(context.oscillators[0].disconnectCalls).toBe(1)
+    expect(context.gains[0].disconnectCalls).toBe(1)
+
+    context.createOscillator = originalCreateOscillator
+    await player.play(scheduleFor())
+    expect(player.isPlaying()).toBe(true)
+  })
+
+  it.each([
+    'frequency',
+    'noteGain',
+    'oscillatorConnect',
+    'gainConnect',
+    'start',
+    'stop',
+  ] satisfies SchedulingFailure[])('cleans the current node pair when %s scheduling fails', async (failure) => {
+    const context = new FakeAudioContext()
+    context.schedulingFailure = failure
+    const player = createWork02AudioPlayer({ audioContextFactory: () => context })
+
+    await expect(player.play(scheduleFor())).rejects.toThrow('synthetic scheduling failure')
+    expect(player.isPlaying()).toBe(false)
+    expect(context.gains[0].disconnectCalls).toBe(1)
+    expect(context.oscillators[0].disconnectCalls).toBe(1)
+    expect(context.gains[1].disconnectCalls).toBe(1)
+    expect(context.oscillators[0].stopTimes).toContain(undefined)
+
+    const staleOnended = context.oscillators[0].onended
+    context.schedulingFailure = null
+    await player.play(scheduleFor('all-right-same-deck-replay'))
+    staleOnended?.()
+    expect(player.isPlaying()).toBe(true)
   })
 
   it('cleans up the active nodes before playing a replacement schedule', async () => {
