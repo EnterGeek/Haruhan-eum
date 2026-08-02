@@ -1,4 +1,4 @@
-import { act } from 'react'
+import { StrictMode, act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AudioSchedule } from '../audio/types'
@@ -11,14 +11,24 @@ class FakePlayer implements Work02AudioPlayer {
   disposeCalls = 0
   playing = false
   playError: Error | null = null
+  disposed = false
 
   async play(schedule: AudioSchedule): Promise<void> {
+    if (this.disposed) {
+      throw new Error(
+        'This Work 02 audio player has been disposed and cannot be reused.',
+      )
+    }
     if (this.playError) throw this.playError
     this.schedules.push(schedule)
     this.playing = true
   }
   stop(): void { this.stopCalls += 1; this.playing = false }
-  async dispose(): Promise<void> { this.disposeCalls += 1; this.playing = false }
+  async dispose(): Promise<void> {
+    this.disposeCalls += 1
+    this.disposed = true
+    this.playing = false
+  }
   isPlaying(): boolean { return this.playing }
 }
 
@@ -79,7 +89,7 @@ describe('Work02Lab', () => {
     })
     expect(container.textContent).toContain('all-left-fast-buttons')
     expect(container.textContent).toContain('Playback stopped')
-    expect(player.stopCalls).toBeGreaterThanOrEqual(2)
+    expect(player.stopCalls).toBe(1)
   })
 
   it('plays A, replaces it with B, and reports only B as active', async () => {
@@ -109,10 +119,40 @@ describe('Work02Lab', () => {
     expect(container.textContent).toContain('Playing B · Relative Hue')
   })
 
-  it('disposes the single player on unmount', () => {
+  it('disposes the single player on unmount', async () => {
+    await click(button('Play A · Absolute Hue'))
     act(() => root.unmount())
     expect(player.disposeCalls).toBe(1)
     root = createRoot(container)
+  })
+
+  it('creates a usable player lazily under React StrictMode', async () => {
+    act(() => root.unmount())
+
+    const players: FakePlayer[] = []
+    root = createRoot(container)
+    act(() => {
+      root.render(
+        <StrictMode>
+          <Work02Lab
+            playerFactory={() => {
+              const next = new FakePlayer()
+              players.push(next)
+              return next
+            }}
+          />
+        </StrictMode>,
+      )
+    })
+
+    expect(players).toHaveLength(0)
+
+    await click(button('Play A · Absolute Hue'))
+
+    expect(players).toHaveLength(1)
+    expect(players[0].disposed).toBe(false)
+    expect(players[0].schedules).toHaveLength(1)
+    expect(container.textContent).toContain('Playing A · Absolute Hue')
   })
 
   it('displays MIDI, contour, direction, and timing data for every method', () => {

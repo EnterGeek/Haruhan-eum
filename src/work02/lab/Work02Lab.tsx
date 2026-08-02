@@ -120,7 +120,14 @@ export function Work02Lab({ playerFactory = createWork02AudioPlayer }: Work02Lab
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const playbackTokenRef = useRef(0)
 
-  if (playerRef.current === null) playerRef.current = playerFactory()
+  const getOrCreatePlayer = useCallback((): Work02AudioPlayer => {
+    const existing = playerRef.current
+    if (existing !== null) return existing
+
+    const player = playerFactory()
+    playerRef.current = player
+    return player
+  }, [playerFactory])
 
   const clearPlaybackState = useCallback(() => {
     playbackTokenRef.current += 1
@@ -132,8 +139,13 @@ export function Work02Lab({ playerFactory = createWork02AudioPlayer }: Work02Lab
 
   useEffect(() => () => {
     playbackTokenRef.current += 1
-    if (timeoutRef.current !== null) clearTimeout(timeoutRef.current)
-    void playerRef.current?.dispose()
+    if (timeoutRef.current !== null) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
+    const player = playerRef.current
+    playerRef.current = null
+    void player?.dispose()
   }, [])
 
   const selectFixture = (nextFixtureId: string) => {
@@ -151,7 +163,8 @@ export function Work02Lab({ playerFactory = createWork02AudioPlayer }: Work02Lab
     setError(null)
     const token = ++playbackTokenRef.current
     try {
-      await playerRef.current?.play(methodResult.schedule)
+      const player = getOrCreatePlayer()
+      await player.play(methodResult.schedule)
       if (token !== playbackTokenRef.current) return
       setPlayingMethod(methodResult.method)
       timeoutRef.current = setTimeout(() => {
