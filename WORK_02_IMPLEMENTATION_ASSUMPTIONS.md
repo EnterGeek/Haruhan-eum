@@ -334,3 +334,51 @@ TEMPORARY IMPLEMENTATION ASSUMPTION
   `src/work02/lab/Work02Lab.tsx`.
 - 향후 대체되어야 하는 제품 결정: A/B/C 평가 결과, 제품 기본 method, 제품 내
   재생 노출 여부와 저장 정책.
+
+## Color Dimensions Lab의 임시 실험 가정
+
+아래 항목은 제품 계약이나 A/B/C 우승 방식의 결정이 아니라, 원본 색을 보면서
+`Hue only`와 `Hue + Lightness + Chroma`의 전달 차이를 격리하는 실험값이다.
+
+TEMPORARY EXPERIMENT ASSUMPTION
+- 결정 내용: `Hybrid`는 최종 선택이 아니라 두 조건이 공유하는 임시 통제 기준이며,
+  기존 `work02-hybrid-hue-v0` contour와 generator 결과를 그대로 사용한다.
+- 필요한 이유: Lightness와 Chroma 외의 차이를 제거해야 두 차원의 추가 효과만
+  비교할 수 있다.
+- 영향을 받는 파일과 함수: `src/work02/colorDimensions/model.ts`의
+  `createColorDimensionsFixtureResult()`, `ColorDimensionsLab.tsx`.
+- 향후 대체되어야 하는 제품 결정: A/B/C 평가 결과와 제품의 기본 interpretation.
+
+TEMPORARY EXPERIMENT ASSUMPTION
+- 결정 내용: Lightness는 `< 1/3 → -1`, `1/3 이상 2/3 미만 → 0`,
+  `2/3 이상 → +1` scale-note index offset으로 결정적으로 양자화한다. 음역 끝에서는
+  scale index를 clamp하고, 이동된 목표에도 기존 7-semitone 최대 도약 선택 규칙을
+  다시 적용한다.
+- 필요한 이유: 연속 Lightness를 MIDI 반음에 직접 더하지 않으면서 작고 추적 가능한
+  첫 실험 효과를 만들어야 한다.
+- 영향을 받는 파일과 함수: `src/work02/colorDimensions/model.ts`의
+  `lightnessToScaleOffset()`, `createColorDimensionsFixtureResult()`.
+- 향후 대체되어야 하는 제품 결정: Lightness의 음악적 역할, 경계값, 영향 범위.
+
+TEMPORARY EXPERIMENT ASSUMPTION
+- 결정 내용: Chroma는 Work 01 deck validator의 실제 허용 범위 `0.07..0.17`을
+  `0..1`로 clamp-normalize하고 note-local envelope peak `0.75..1.00`에 선형
+  mapping한다. pitch와 timing에는 영향을 주지 않으며 master gain `0.18`은 기존
+  master node에서 한 번만 적용한다. Hue-only peak는 항상 `1.00`이다.
+- 필요한 이유: 제품 `work02-audio-schedule-v1`을 변경하지 않고 Chroma의 작은 강도
+  차이만 동일 playback profile 안에서 비교해야 한다.
+- 영향을 받는 파일과 함수: `src/work02/colorDimensions/model.ts`의
+  `normalizeDeckChroma()`, `chromaToNoteLocalPeak()`, Lab 전용 schedule extension,
+  `src/work02/audio/player.ts`의 기본값 1인 `noteGainPeakResolver` 주입점.
+- 향후 대체되어야 하는 제품 결정: Chroma의 음악적 역할, 정규화 범위, velocity 또는
+  envelope의 공개 계약 도입 여부.
+
+TEMPORARY EXPERIMENT ASSUMPTION
+- 결정 내용: Color Dimensions Lab은 `/work02-color-dimensions-lab.html`의 개발용
+  별도 entry이며 fixture 선택·재생·평가를 저장하지 않는다. button/swipe, 정확한
+  선택 timing, undo/reselection history는 화면에만 표시하고 audio에는 mapping하지 않는다.
+- 필요한 이유: 사용자가 원본 12색과 계산 경로를 보면서 두 조건만 판단하고, 보이는
+  세션 메타정보가 이미 음악에 반영됐다고 오해하지 않아야 한다.
+- 영향을 받는 파일과 함수: `work02-color-dimensions-lab.html`, `vite.config.ts`,
+  `src/work02/colorDimensions/**`.
+- 향후 대체되어야 하는 제품 결정: 실험 결과에 따른 차원 채택 여부와 제품 통합 여부.

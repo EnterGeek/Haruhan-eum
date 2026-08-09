@@ -1,4 +1,4 @@
-import type { AudioSchedule } from './types'
+import type { AudioSchedule, ScheduledAudioNote } from './types'
 import { validateAudioSchedule } from './validateSchedule'
 
 export interface AudioParamAdapter {
@@ -44,6 +44,10 @@ export interface Work02AudioPlayer {
 
 export interface Work02AudioPlayerOptions {
   audioContextFactory?: AudioContextFactory
+  noteGainPeakResolver?: (
+    schedule: AudioSchedule,
+    note: ScheduledAudioNote,
+  ) => number
 }
 
 export class Work02AudioPlaybackUnsupportedError extends Error {
@@ -98,6 +102,7 @@ export function createWork02AudioPlayer(
   options: Work02AudioPlayerOptions = {},
 ): Work02AudioPlayer {
   const audioContextFactory = options.audioContextFactory ?? browserAudioContextFactory
+  const noteGainPeakResolver = options.noteGainPeakResolver ?? (() => 1)
   let audioContext: AudioContextAdapter | null = null
   let masterGain: GainNodeAdapter | null = null
   let activeNodes: ActiveAudioNodePair[] = []
@@ -141,6 +146,10 @@ export function createWork02AudioPlayer(
         nextMasterGain.connect(context.destination)
 
         validated.notes.forEach((note) => {
+          const noteGainPeak = noteGainPeakResolver(validated, note)
+          if (!Number.isFinite(noteGainPeak) || noteGainPeak < 0 || noteGainPeak > 1) {
+            throw new RangeError('noteGainPeakResolver must return a finite number in [0, 1].')
+          }
           const startTime = playbackStartTime + note.startSeconds
           const endTime = playbackStartTime + note.endSeconds
           const durationSeconds = note.durationSeconds
@@ -179,8 +188,8 @@ export function createWork02AudioPlayer(
           oscillator.type = validated.profile.waveform
           oscillator.frequency.setValueAtTime(note.frequencyHz, startTime)
           gain.gain.setValueAtTime(0, startTime)
-          gain.gain.linearRampToValueAtTime(1, attackEnd)
-          gain.gain.setValueAtTime(1, releaseStart)
+          gain.gain.linearRampToValueAtTime(noteGainPeak, attackEnd)
+          gain.gain.setValueAtTime(noteGainPeak, releaseStart)
           gain.gain.linearRampToValueAtTime(0, endTime)
           oscillator.connect(gain)
           gain.connect(nextMasterGain)

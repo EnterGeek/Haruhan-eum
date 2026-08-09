@@ -182,6 +182,19 @@ describe('Work02AudioPlayer', () => {
     ])
   })
 
+  it('supports a validated Lab-only note peak resolver without changing master gain', async () => {
+    const context = new FakeAudioContext()
+    const player = createWork02AudioPlayer({
+      audioContextFactory: () => context,
+      noteGainPeakResolver: (_schedule, note) => note.noteIndex === 0 ? 0.75 : 1,
+    })
+    await player.play(scheduleFor())
+
+    expect(context.gains[0].gain.automations[0].value).toBe(0.18)
+    expect(context.gains[1].gain.automations.map((automation) => automation.value)).toEqual([0, 0.75, 0.75, 0])
+    expect(context.gains[2].gain.automations.map((automation) => automation.value)).toEqual([0, 1, 1, 0])
+  })
+
   it('caps attack and release at half of a short note without extending beyond its end', async () => {
     const context = new FakeAudioContext()
     const player = createWork02AudioPlayer({ audioContextFactory: () => context })
