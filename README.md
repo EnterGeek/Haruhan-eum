@@ -1,28 +1,72 @@
-# 하루한음 — Work 01
+# 하루한음 Public Baseline
 
-오늘을 잠깐 떠올린 뒤 12개의 색에 좌우로 반응하고, 제시된 전체 덱과 선택 흐름을 재현 가능한 JSON으로 남기는 모바일 우선 웹 프로토타입이다.
+[![CI](https://github.com/EnterGeek/Haruhan-eum-public/actions/workflows/ci.yml/badge.svg)](https://github.com/EnterGeek/Haruhan-eum-public/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/EnterGeek/Haruhan-eum-public/actions/workflows/codeql.yml/badge.svg)](https://github.com/EnterGeek/Haruhan-eum-public/actions/workflows/codeql.yml)
+
+하루한음의 공개 연구·개발 기준선입니다. 사용자는 오늘을 잠깐 떠올린 뒤 12개의 색에 가볍게 반응하고, 그 선택 흐름으로 짧은 멜로디를 만납니다.
+
+사용자가 색–음 대응을 기억하거나 자신의 심리를 해석할 필요는 없습니다. 이 저장소의 알고리즘은 **감정·성격·정신건강을 진단하지 않으며**, 색 선택을 음악 생성에 사용할 수 있는 관찰 가능한 신호로만 다룹니다.
+
+## 현재 상태
+
+- **Work 01:** 결정적 OKLCH 색상 덱, 좌우 선택, 되돌리기, 세션 JSON 계약
+- **Work 02:** 입력 adapter, Hue 해석 A/B/C, melody generator baseline, Web Audio schedule/player
+- **개발용 Lab:** `/work02-lab.html`, `/work02-color-dimensions-lab.html`
+- **제품 기본 매핑:** 미확정
+- **개인화·잠재 상태 추정·production mapping:** 이 공개 저장소의 범위 밖
+
+모든 Work 02 음악 규칙은 현재 **실험 가정**입니다. 색채 심리 검사나 의료·상담 도구로 사용해서는 안 됩니다.
 
 ## 실행
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
-자동 검증:
+검증:
 
 ```bash
 npm test
 npm run build
 ```
 
-## 핵심 구조
+## 진입점
 
-- `src/domain/deck.ts`: 결정적 색상 덱 생성과 검증
-- `src/domain/session.ts`: 시작, 선택, 되돌리기, 완료, 내보내기 상태 전이
-- `src/domain/types.ts`: Work 02 전달 데이터 계약
-- `src/ui/App.tsx`: 모바일 UI와 단일 입력 커밋 경로
-- `IMPLEMENTATION_ASSUMPTIONS.md`: 제품 결정이 아닌 임시 구현값
-- `WORK_01_HANDOFF.md`: 다음 작업 인수인계
+| 경로 | 용도 |
+|---|---|
+| `/` | Work 01 모바일 색 선택 프로토타입 |
+| `/work02-lab.html` | Absolute / Relative / Hybrid Hue 비교 |
+| `/work02-color-dimensions-lab.html` | Hue-only와 Hue + Lightness + Chroma 임시 비교 |
 
-동일한 `deckVersion`과 `deckSeed`는 동일한 카드 값과 순서를 만든다. 덱 생성 경로는 `Math.random()`, 현재 시각, 로케일에 의존하지 않는다.
+Lab은 제품 화면이 아니라 개발·청취 검증 도구입니다. Lab 결과가 심리적 의미나 제품 기본 알고리즘의 확정을 뜻하지 않습니다.
+
+## 데이터와 개인정보
+
+저장소에 포함된 회귀 fixture는 공개용으로 정리한 **합성 데이터**입니다.
+
+- 실제 사용자 세션, 이름, 계정 ID, 실제 시각·시간대는 commit하지 않습니다.
+- fixture는 알고리즘 회귀에 필요한 색·방향·입력 패턴만 보존합니다.
+- 실제 사용자 연구 데이터와 production inference는 별도 비공개 경계에서 관리합니다.
+
+자세한 원칙은 다음 문서를 참조하세요.
+
+- [`docs/PUBLIC_PRIVATE_BOUNDARY.md`](docs/PUBLIC_PRIVATE_BOUNDARY.md)
+- [`docs/EXPERIMENTAL_USE_POLICY.md`](docs/EXPERIMENTAL_USE_POLICY.md)
+- [`docs/golden-sessions/README.md`](docs/golden-sessions/README.md)
+- [`WORK_02_IMPLEMENTATION_ASSUMPTIONS.md`](WORK_02_IMPLEMENTATION_ASSUMPTIONS.md)
+
+## 자동 검사
+
+- push / pull request: Node 22·24에서 test 및 build
+- 매일: 10,000-seed deck stress test
+- 매주: dependency audit
+- push / pull request / 주간: CodeQL JavaScript·TypeScript 분석
+
+## 공개·비공개 경계
+
+공개 저장소에는 재현 가능한 입력 계약, baseline generator, synthetic fixture와 검증 도구를 둡니다. 개인화 모델, 사용자 연구 결과, 잠재 음악 상태 추정, production mapping 및 비공개 평가 정책은 `Haruhan-eum-engine-private`에서 관리합니다.
+
+## 라이선스
+
+현재 오픈소스 라이선스가 부여되어 있지 않습니다. 저장소가 공개되어 있다는 사실만으로 코드의 사용·수정·재배포 권한이 부여되지는 않습니다.
