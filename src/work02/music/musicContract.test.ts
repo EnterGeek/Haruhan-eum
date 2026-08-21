@@ -91,8 +91,8 @@ describe('music grammar contract', () => {
     )).toBeGreaterThanOrEqual(DEFAULT_MUSIC_GRAMMAR.targetDurationSeconds.minimum)
     expect(beatsToSeconds(
       DEFAULT_MUSIC_GRAMMAR.totalBeats,
-      DEFAUL_MUSIC_GRAMMAR.tempoBpm,
-     )).toBeLessThanOrEqual(DEFAULT_MUSIC_GRAMMAR.targetDurationSeconds.maximum)
+      DEFAULT_MUSIC_GRAMMAR.tempoBpm,
+    )).toBeLessThanOrEqual(DEFAULT_MUSIC_GRAMMAR.targetDurationSeconds.maximum)
   })
 
   it.each([
