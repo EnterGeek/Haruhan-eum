@@ -4,7 +4,10 @@ import { expandGoldenCase } from './expandGoldenCase'
 
 describe('expandGoldenCase', () => {
   it('restores representative fixture order, canonical card IDs, and direction strings', () => {
-    const input = expandGoldenCase(goldenSessions, 'same-deck-baseline')
+    const caseId = 'same-deck-baseline'
+    const goldenCase = goldenSessions.cases.find((item) => item.id === caseId)
+    expect(goldenCase).toBeDefined()
+    const input = expandGoldenCase(goldenSessions, caseId)
     expect(input).toHaveLength(12)
     expect(input.map((item) => item.index)).toEqual(
       Array.from({ length: 12 }, (_, index) => index + 1),
@@ -13,7 +16,7 @@ describe('expandGoldenCase', () => {
       Array.from(
         { length: 12 },
         (_, index) =>
-          `work01-oklch-v1:1yz198b-ulry7g-1qye45s:${String(index + 1).padStart(2, '0')}`,
+          `work01-oklch-v1:${goldenCase?.deckSeed}:${String(index + 1).padStart(2, '0')}`,
       ),
     )
     expect(input.map((item) => item.direction).join(',')).toBe(
